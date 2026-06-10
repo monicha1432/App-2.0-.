@@ -550,7 +550,7 @@ body.theme-light .ov-item{background:rgba(240,244,248,.8)}
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>#</th><th>In Date</th><th>In Time</th><th>Out Date</th><th>Out Time</th><th>Work Hrs</th><th>OT Hrs</th><th>OT Amt</th><th>Day Sal</th><th>⭐ Apshan</th><th>Type</th></tr></thead>
+        <thead><tr><th>#</th><th>In Date</th><th>In Time</th><th>Out Date</th><th>Out Time</th><th>Work Hrs</th><th>OT Hrs</th><th>OT Amt</th><th>Day Sal</th><th>⭐ Apshan</th><th>Type</th><th>Edit</th></tr></thead>
         <tbody id="salaryWorkLogBody"></tbody>
       </table>
     </div>
@@ -611,7 +611,7 @@ body.theme-light .ov-item{background:rgba(240,244,248,.8)}
     <div class="card-header"><div class="card-title"><div class="card-title-icon">📄</div>Transaction List</div></div>
     <div class="tbl-wrap" id="txTableWrap" style="display:none">
       <table>
-        <thead><tr><th>#</th><th>Description</th><th>Type</th><th>Amount</th><th>⭐ Apshan</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Description</th><th>Type</th><th>Amount</th><th>⭐ Apshan</th><th>Edit</th><th></th></tr></thead>
         <tbody id="txBody"></tbody>
       </table>
     </div>
@@ -1269,7 +1269,7 @@ function renderSalary(){
   const txs=(data.transactions||[]).filter(t=>t.staffId===staffId&&t.month===month);
   const totalIncome=txs.reduce((s,t)=>s+(t.type==='income'?t.amt:0),0);
   const totalExpense=txs.reduce((s,t)=>s+(t.type==='expense'?t.amt:0),0);
-  const net=base+otPay+totalIncome-totalExpense;
+  const net=base+otPay+totalIncome+totalApshan-totalExpense;
   const staffObj=data.staff.find(s=>s.id===staffId);
   document.getElementById('salErpStaffName').textContent=(staffObj?staffObj.id+' — '+staffObj.name:staffId)+' · '+month;
   document.getElementById('sovDays').textContent=days;
@@ -1298,6 +1298,7 @@ function renderSalary(){
       <td style="color:var(--green);font-weight:600">₹${dr.toFixed(0)}</td>
       <td>${l.apshan>0?`<span class="tag tag-apshan">⭐₹${l.apshan}</span>`:'—'}</td>
       <td><span class="tag ${l.isNight?'tag-night':'tag-day'}">${l.isNight?'🌙':'☀️'}</span></td>
+      <td><button class="btn-edit" onclick="openEditWL(${l.id})">✏️</button></td>
     </tr>`;
   }).join('');
 }
@@ -1331,7 +1332,7 @@ function renderExpenses(){
   const txs=(data.transactions||[]).filter(t=>t.staffId===staffId&&t.month===month);
   const totalIncome=txs.reduce((s,t)=>s+(t.type==='income'?t.amt:0),0);
   const totalExpense=txs.reduce((s,t)=>s+(t.type==='expense'?t.amt:0),0);
-  const finalBalance=base+otPay+totalIncome-totalExpense;
+  const finalBalance=base+otPay+totalIncome+totalApshan-totalExpense;
   const staffObj=data.staff.find(s=>s.id===staffId);
   document.getElementById('expErpStaffName').textContent=(staffObj?staffObj.id+' — '+staffObj.name:staffId)+' · '+month;
   // Salary panel
@@ -1372,6 +1373,7 @@ function renderExpenses(){
       <td><span class="tag ${t.type==='income'?'tag-income':'tag-expense'}">${t.type}</span></td>
       <td style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${t.type==='income'?'var(--green)':'var(--red)'}">${t.type==='income'?'+':'-'}₹${t.amt.toLocaleString('en-IN')}</td>
       <td>${t.apshan>0?`<span class="tag tag-apshan">⭐₹${t.apshan}</span>`:'—'}</td>
+      <td><button class="btn-edit" onclick="openEditTx(${t.id})">✏️</button></td>
       <td><button class="btn-danger" onclick="softDeleteTx(${t.id})">🗑</button></td>
     </tr>`).join('');
 }
@@ -1538,7 +1540,7 @@ async function saveEditModal(){
         l.workHrs=+diff.toFixed(2);l.otHrs=+Math.max(0,diff-8).toFixed(2);l.isNight=inDate!==outDate;
         await sbUpdate('work_logs', l.id, wlToDb(l));
       }
-      renderMasterWorkLog(); renderWorkLog(); renderSalary();
+      renderMasterWorkLog(); renderWorkLog(); renderSalary(); renderExpenses();
     } else if(editType==='tx'){
       const t=data.transactions.find(x=>x.id===editTarget); if(!t){ hideLoader(); return; }
       t.desc=document.getElementById('ef_desc').value.trim();
